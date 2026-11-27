@@ -1,19 +1,17 @@
 # Ejercicio 3 – Préstamos de Renta Particular
 
-Diagrama editable: [`prestamos-renta-particular.drawio`](prestamos-renta-particular.drawio) (4 páginas; abrir con
-draw.io Desktop o app.diagrams.net). Las imágenes de `img/` se exportan desde ese archivo.
+Diagrama editable: [`prestamos-renta-particular.drawio`](prestamos-renta-particular.drawio) (abrir con draw.io
+Desktop o app.diagrams.net). La imagen de `img/` se exporta desde ese archivo.
 
-## Problema (AS-IS)
+![Arquitectura propuesta](img/arquitectura.png)
 
-![AS-IS](img/1-as-is.png)
+## Problema
 
 El 502 del proxy de INARI **no significa que el préstamo falló**: significa que el resultado es desconocido, porque
 admwr sigue procesando y muchas veces desembolsa. Como cada reintento del cliente es una operación nueva y nada
 la relaciona con la anterior, el sistema termina desembolsando varias veces.
 
-## Solución (TO-BE)
-
-![TO-BE](img/2-to-be.png)
+## Solución
 
 Tres ideas sostienen el diseño:
 
@@ -24,13 +22,11 @@ Tres ideas sostienen el diseño:
 3. **Un 502 es "estado desconocido", no "fallo".** El worker marca `UNKNOWN` y no reintenta. Un reconciliador
    consulta admwr por la llave y solo reintenta (con la misma llave) si admwr confirma que no se ejecutó.
 
-### Secuencia ante un 502
-
-![Secuencia](img/3-secuencia-502.png)
-
 ### Estados de la solicitud
 
-![Estados](img/4-estados.png)
+`RECEIVED → QUEUED → SENT → DISBURSED | REJECTED`. Ante 502 o timeout, `SENT → UNKNOWN` (en el diagrama,
+"pendiente"); el reconciliador lo lleva a `DISBURSED`, lo reencola con la misma llave o, tras N intentos sin
+respuesta, a `MANUAL_REVIEW`.
 
 ### Modelo de datos (núcleo)
 
