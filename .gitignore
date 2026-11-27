@@ -1,0 +1,20 @@
+# Environment
+.env
+.env.*
+!.env.example
+
+# Node
+node_modules/
+dist/
+coverage/
+npm-debug.log*
+
+# Go
+routes-api/bin/
+*.test
+*.out
+
+# OS / editors
+.DS_Store
+.idea/
+.vscode/

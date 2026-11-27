@@ -1,0 +1,64 @@
+services:
+  postgres:
+    image: postgres:17-alpine
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:-endorsements}
+      POSTGRES_USER: ${POSTGRES_USER:-endorsements}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?set POSTGRES_PASSWORD in .env}
+    ports:
+      - "${POSTGRES_PORT:-5432}:5432"
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER} -d $${POSTGRES_DB}"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+  endorsement-api:
+    build: ./endorsement-api
+    environment:
+      PORT: "3000"
+      DB_HOST: postgres
+      DB_PORT: "5432"
+      DB_NAME: ${POSTGRES_DB:-endorsements}
+      DB_USER: ${POSTGRES_USER:-endorsements}
+      DB_PASSWORD: ${POSTGRES_PASSWORD}
+      DB_MIGRATIONS_RUN: "true"
+      JWT_SECRET: ${JWT_SECRET:?set JWT_SECRET in .env}
+      JWT_ISSUER: ${JWT_ISSUER:-interseguritos}
+      JWT_AUDIENCE: ${JWT_AUDIENCE:-interseguritos-apis}
+      API_CLIENT_ID: ${API_CLIENT_ID:?set API_CLIENT_ID in .env}
+      API_CLIENT_SECRET: ${API_CLIENT_SECRET:?set API_CLIENT_SECRET in .env}
+      CORS_ORIGINS: ${CORS_ORIGINS:-http://localhost:5173}
+    ports:
+      - "3000:3000"
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+  routes-api:
+    build: ./routes-api
+    environment:
+      PORT: "8080"
+      JWT_SECRET: ${JWT_SECRET:?set JWT_SECRET in .env}
+      JWT_ISSUER: ${JWT_ISSUER:-interseguritos}
+      JWT_AUDIENCE: ${JWT_AUDIENCE:-interseguritos-apis}
+      CORS_ORIGINS: ${CORS_ORIGINS:-http://localhost:5173}
+    ports:
+      - "8080:8080"
+
+  frontend:
+    build: ./frontend
+    environment:
+      PORT: "8080"
+      ENDORSEMENT_API_URL: http://endorsement-api:3000
+      ROUTES_API_URL: http://routes-api:8080
+    ports:
+      - "5173:8080"
+    depends_on:
+      - endorsement-api
+      - routes-api
+
+volumes:
+  postgres-data:
